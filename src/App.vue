@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RouterView, RouterLink } from 'vue-router'
 import QueryPage from './components/QueryPage.vue'
 import InputAccount from "./components/InputAccount.vue";
 import ManageCategory from "./components/ManageCategory.vue";
@@ -13,7 +12,7 @@ const components = {
   InputAccount,
   ManageCategory,
   QueryPage
-}
+} as const
 </script>
 
 <template>
@@ -32,12 +31,12 @@ const components = {
     </el-menu>
 
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl py-8">
-      <component :is="components[activeComponent]" />
+      <component :is="components[activeComponent as keyof typeof components]" />
     </div>
   </div>
 </template>
 
-<style>
+<style lang="postcss">
 .el-menu-demo {
   @apply mb-4;
 }
