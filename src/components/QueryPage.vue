@@ -2,22 +2,11 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-
-interface AccountVO {
-  id: string;
-  amount: number;
-  category: string;
-  type: string;
-  remarks: string;
-  createTime: string;
-  updateTime: string;
-}
+import { API } from '../api/constants'
 
 interface CategoryVO {
-  id: string;
+  categoryId: string;
   categoryName: string;
-  createTime: string;
-  updateTime: string;
 }
 
 const totalIncome = ref(0)
@@ -29,7 +18,7 @@ const categoryExpense = ref(0)
 const customAmount = ref(0)
 
 const selectedMonth = ref('')
-const selectedCategory = ref('')
+const selectedCategory = ref<string>('')
 const customType = ref('expense')
 const customMonth = ref('')
 const customCategory = ref('')
@@ -44,20 +33,18 @@ onMounted(async () => {
 
 const fetchCategories = async () => {
   try {
-    const response = await axios.get('/api/category/list')
-    if (response.data.status === 200) {
-      categories.value = response.data.data
-    } else {
-      ElMessage.error(response.data.message || 'Failed to fetch categories')
-    }
+    const response = await axios.get('http://localhost:8080/api/category/list')
+    console.log('API响应:', response.data)
+    categories.value = response.data.data
   } catch (error) {
-    ElMessage.error('Failed to fetch categories')
+    console.error('获取类别失败:', error)
+    ElMessage.error('获取类别失败')
   }
 }
 
 const fetchTotalIncome = async () => {
   try {
-    const response = await axios.get('/api/account/total-income')
+    const response = await axios.get('http://localhost:8080/api/accounts/total-income')
     totalIncome.value = response.data
   } catch (error) {
     ElMessage.error('Failed to fetch total income')
@@ -66,7 +53,7 @@ const fetchTotalIncome = async () => {
 
 const fetchTotalExpense = async () => {
   try {
-    const response = await axios.get('/api/account/total-expense')
+    const response = await axios.get('http://localhost:8080/api/accounts/total-expense')
     totalExpense.value = response.data
   } catch (error) {
     ElMessage.error('Failed to fetch total expense')
@@ -79,7 +66,7 @@ const fetchMonthlyIncome = async () => {
     return
   }
   try {
-    const response = await axios.get(`/api/account/income-by-month?month=${selectedMonth.value}`)
+    const response = await axios.get(`http://localhost:8080/api/accounts/income-by-month?month=${selectedMonth.value}`)
     monthlyIncome.value = response.data
   } catch (error) {
     ElMessage.error('Failed to fetch monthly income')
@@ -92,7 +79,7 @@ const fetchMonthlyExpense = async () => {
     return
   }
   try {
-    const response = await axios.get(`/api/account/expense-by-month?month=${selectedMonth.value}`)
+    const response = await axios.get(`http://localhost:8080/api/accounts/expense-by-month?month=${selectedMonth.value}`)
     monthlyExpense.value = response.data
   } catch (error) {
     ElMessage.error('Failed to fetch monthly expense')
@@ -101,48 +88,53 @@ const fetchMonthlyExpense = async () => {
 
 const fetchCategoryIncome = async () => {
   if (!selectedCategory.value) {
-    ElMessage.warning('Please select a category')
+    ElMessage.warning('请选择类别')
     return
   }
   try {
-    const response = await axios.get(`/api/account/income-by-category?categoryId=${selectedCategory.value}`)
+    const response = await axios.get(`http://localhost:8080/api/accounts/income-by-category?categoryName=${selectedCategory.value}`)
     categoryIncome.value = response.data
   } catch (error) {
-    ElMessage.error('Failed to fetch category income')
+    ElMessage.error('获取类别收入失败')
   }
 }
 
 const fetchCategoryExpense = async () => {
   if (!selectedCategory.value) {
-    ElMessage.warning('Please select a category')
+    ElMessage.warning('请选择类别')
     return
   }
   try {
-    const response = await axios.get(`/api/account/expense-by-category?categoryId=${selectedCategory.value}`)
+    console.log(selectedCategory.value)
+    const response = await axios.get(`http://localhost:8080/api/accounts/expense-by-category?categoryName=${selectedCategory.value}`)
     categoryExpense.value = response.data
   } catch (error) {
-    ElMessage.error('Failed to fetch category expense')
+    ElMessage.error('获取类别支出失败')
   }
 }
 
 const fetchCustomAmount = async () => {
   if (!customMonth.value || !customCategory.value) {
-    ElMessage.warning('Please select both month and category for custom query')
+    ElMessage.warning('请选择月份和类别')
     return
   }
   try {
-    const response = await axios.get('/api/account/custom-input', {
-      params: {
-        type: customType.value,
-        month: customMonth.value,
-        categoryId: customCategory.value
+    const response = await axios.get<number>(
+      `${API.BASE_URL}${API.ACCOUNTS.CUSTOM_QUERY}`,
+      {
+        params: {
+          type: customType.value,
+          month: customMonth.value,
+          categoryName: customCategory.value
+        }
       }
-    })
+    )
     customAmount.value = response.data
   } catch (error) {
-    ElMessage.error('Failed to fetch custom amount')
+    ElMessage.error('查询失败')
   }
 }
+
 </script>
 
 <template>
@@ -207,12 +199,16 @@ const fetchCustomAmount = async () => {
       </template>
       <el-form @submit.prevent>
         <el-form-item label="选择类别">
-          <el-select v-model="selectedCategory" placeholder="选择类别">
+          <el-select 
+            v-model="selectedCategory" 
+            placeholder="选择类别"
+            :clearable="true"
+          >
             <el-option
-                v-for="category in categories"
-                :key="category.id"
-                :label="category.categoryName"
-                :value="category.id"
+              v-for="category in categories"
+              :key="category.categoryId"
+              :label="category.categoryName"
+              :value="category.categoryName"
             />
           </el-select>
         </el-form-item>
@@ -236,8 +232,8 @@ const fetchCustomAmount = async () => {
       <el-form @submit.prevent="fetchCustomAmount">
         <el-form-item label="类型">
           <el-select v-model="customType">
-            <el-option label="支出" value="expense" />
-            <el-option label="收入" value="income" />
+            <el-option label="支出" value="收入" />
+            <el-option label="收入" value="支出" />
           </el-select>
         </el-form-item>
         <el-form-item label="月份">
@@ -253,9 +249,9 @@ const fetchCustomAmount = async () => {
           <el-select v-model="customCategory" placeholder="选择类别">
             <el-option
                 v-for="category in categories"
-                :key="category.id"
+                :key="category.categoryId"
                 :label="category.categoryName"
-                :value="category.id"
+                :value="category.categoryName"
             />
           </el-select>
         </el-form-item>

@@ -3,17 +3,12 @@ import { ref, onMounted } from 'vue'
 import { PlusIcon, PencilIcon, TrashIcon } from 'lucide-vue-next'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { Category, ApiResponse } from '../types'
+import { API } from '../api/constants'
 
-interface CategoryVO {
-  id: string;
-  categoryName: string;
-  createTime: string;
-  updateTime: string;
-}
-
-const categories = ref<CategoryVO[]>([])
+const categories = ref<Category[]>([])
 const newCategory = ref('')
-const editingCategory = ref<CategoryVO | null>(null)
+const editingCategory = ref<Category | null>(null)
 
 onMounted(async () => {
   await fetchCategories()
@@ -21,22 +16,22 @@ onMounted(async () => {
 
 const fetchCategories = async () => {
   try {
-    const response = await axios.get('/api/category/list')
-    if (response.data.status === 200) {
+    const response = await axios.get<ApiResponse<Category[]>>(`${API.BASE_URL}${API.CATEGORY.LIST}`)
+    if (response.data.status === 'OK') {
       categories.value = response.data.data
     } else {
-      ElMessage.error(response.data.message || 'Failed to fetch categories')
+      ElMessage.error(response.data.message || '获取类别失败')
     }
   } catch (error) {
-    ElMessage.error('Failed to fetch categories')
+    ElMessage.error('获取类别失败')
   }
 }
 
 const addCategory = async () => {
   if (newCategory.value) {
     try {
-      const response = await axios.post('/api/category/add', { categoryName: newCategory.value })
-      if (response.data.status === 200) {
+      const response = await axios.post('http://localhost:8080/api/category/add', { categoryName: newCategory.value })
+      if (response.data.status === 'OK') {
         ElMessage.success('Category added successfully')
         newCategory.value = ''
         await fetchCategories()
@@ -49,18 +44,18 @@ const addCategory = async () => {
   }
 }
 
-const startEditing = (category: CategoryVO) => {
+const startEditing = (category: Category) => {
   editingCategory.value = { ...category }
 }
 
 const saveEdit = async () => {
   if (editingCategory.value) {
     try {
-      const response = await axios.post('/api/category/update', {
+      const response = await axios.post('http://localhost:8080/api/category/update', {
         categoryId: editingCategory.value.id,
         categoryName: editingCategory.value.categoryName
       })
-      if (response.data.status === 200) {
+      if (response.data.status === 'OK') {
         ElMessage.success('Category updated successfully')
         editingCategory.value = null
         await fetchCategories()
@@ -79,8 +74,8 @@ const cancelEdit = () => {
 
 const removeCategory = async (categoryId: string) => {
   try {
-    const response = await axios.delete('/api/category/delete', { data: { categoryId } })
-    if (response.data.status === 200) {
+    const response = await axios.delete('http://localhost:8080/api/category/delete', { data: { categoryId } })
+    if (response.data.status === 'OK') {
       ElMessage.success('Category deleted successfully')
       await fetchCategories()
     } else {
